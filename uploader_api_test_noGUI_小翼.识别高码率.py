@@ -4,6 +4,7 @@ Created on Tue Dec 10 10:44:30 2019
 
 @author: asus
 """
+
 import requests
 import json
 from bs4 import BeautifulSoup
@@ -82,7 +83,8 @@ def uploader_api(now = now):
             data = {'mod': 'USER', 'action': 'PUBLISH_INFO', 'uid': uid, 'date': yr_mo}
             
             # cookies
-            cookies = {"__cfduid": "d2dbafe9039a74f37892b5110d79ed17f1571797277","UM_distinctid": "170944dedc2813-037ca962d71c3c-4313f6b-13c680-170944dedc37c9","c_lang_folder": "chs","c_secure_login": "bm9wZQ%3D%3D","c_secure_pass": "d74d1154ea8fd2872eb62090f4e69ffe","c_secure_ssl": "eWVhaA%3D%3D","c_secure_tracker_ssl": "eWVhaA%3D%3D","c_secure_uid": "OTAzMjM%3D","CNZZDATA5476511": "cnzz_eid%3D190879163-1551529243-https%253A%252F%252Fhdsky.me%252F%26ntime%3D1586952929"}    
+            cookies = {"__cfduid": "dd365ed8b4ba03783bea831bcb17c369d1586834432","UM_distinctid": "17176b5557c63a-0651bd910f42d7-87f133f-1fa400-17176b5557d1f4","c_secure_login": "bm9wZQ%3D%3D","c_secure_pass": "c6b94cef7e6da1397a60c914c51b6d42","c_secure_ssl": "eWVhaA%3D%3D","c_secure_tracker_ssl": "eWVhaA%3D%3D","c_secure_uid": "ODUzMjk%3D","CNZZDATA5476511": "cnzz_eid%3D1166175672-1586832819-https%253A%252F%252Fhdsky.me%252F%26ntime%3D1589202515"}
+            
             # POST to aquire adoption information of a keeper
             r = requests.post("https://hdsky.me/addons.php",cookies = cookies, data = data)
             user_profile = BeautifulSoup(r.text, features = 'lxml')
