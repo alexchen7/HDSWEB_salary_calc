@@ -14,16 +14,16 @@ from tqdm import tqdm
 import os.path
 import pandas as pd
 import pathlib
-from tkinter import *
+#from tkinter import *
 
-root = Tk()
-root.title("HDSWeb组统计v0.01beta")
-
-select_time_lable = Label(root, text="若处理其他月份的数据请按照YYYY-XX输入日期, 留空则默认处理本月数据")
-select_time_entry = Entry(root)
-
-select_time_lable.grid(row = 0, sticky = W)
-select_time_entry.grid(row = 1, columnspan = 15)
+#root = Tk()
+#root.title("HDSWeb组统计v0.01beta")
+#
+#select_time_lable = Label(root, text="若处理其他月份的数据请按照YYYY-XX输入日期, 留空则默认处理本月数据")
+#select_time_entry = Entry(root)
+#
+#select_time_lable.grid(row = 0, sticky = W)
+#select_time_entry.grid(row = 1, columnspan = 15)
 
 
 
@@ -48,7 +48,8 @@ def uploader_api(now = now):
     yr_mo = now.strftime("%Y-%m")
     
     # in case not collecting data for this month
-    select_time = str(select_time_entry.get())
+    select_time = str(input('若处理其他月份的数据请按照YYYY-XX-DD输入日期,\
+                            按Enter键则默认处理本月数据'))
     # if there is an input
     if select_time:
         select_time = datetime.strptime(select_time, "%Y-%m")
@@ -122,10 +123,18 @@ def uploader_api(now = now):
                                    'medium':torrent['medium'], '分辨率':torrent['standard'], \
                                    'codec':torrent['codec'], 'audiocodec':torrent['audiocodec'],\
                                    'options':torrent['options'], '标题':torrent['name'], \
-                                   '小标题':torrent['small_descr'], '多集':'', \
+                                   '小标题':torrent['small_descr'], 'NF':'', \
+                                   '多集':'', \
                                    '旧合集':'', '新合集':'', '双语':'','备注':'', \
                                    '更新时间':str(datetime.now())}
+                        # analyze name
+                        name_info = name_analyzer(torrent['name'])
                         
+                        # copying result 
+                        for this_info in name_info:
+                            uploader_dict['uploads'][torrent['torrent']][this_info]= \
+                            name_info[this_info]
+
                         # analyze small description
                         small_descr_info = small_descr_analyzer(torrent['small_descr'])
                         
@@ -137,7 +146,7 @@ def uploader_api(now = now):
                     uploader_dict['uploads'][-1] = {'体积' : '1', '发布时间' : '1970-01-01 00:00:00', \
                    '发布组' : '0', '分类' : '0', 'medium': '0', '分辨率': '0', \
                    'codec':'0', 'audiocodec': '0', 'options': '0', '标题': '0', \
-                   '小标题':'0' , '多集':'','旧合集':'', '新合集':'', '双语':'', \
+                   '小标题':'0' , 'NF':'', '多集':'','旧合集':'', '新合集':'', '双语':'', \
                    '备注':'','更新时间':str(datetime.now())}
                 
                 # add user name
@@ -157,6 +166,17 @@ def uploader_api(now = now):
     csv_to_excel(file_name_salary_report)
     
     print ('转换完毕，全部完成!')
+    
+def name_analyzer(name):
+    """read name and return if NF"""
+    # create a dict to tell if it's NF
+    name_info = {'NF' : ''}
+    
+    NF_reg = re.compile(" NF ")
+    
+    name_info['NF'] = bool(re.search(NF_reg, name))
+    
+    return name_info
 
 def small_descr_analyzer(small_descr):
     """takes the small description and output a dictionary for telling new/old 
@@ -166,15 +186,17 @@ def small_descr_analyzer(small_descr):
     small_descr_info = {'多集':'','旧合集':'', '新合集':'', '双语':''}
     
     # condition for old package also can be id
-    old_package_reg = re.compile("全\d{1,5}集")
+    old_package_reg = re.compile("全\d{1,5}[集期]")
     # condition for new package
-    new_package_reg = re.compile("全\d{1,5}集打包")
+    new_package_reg = re.compile("全\d{1,5}[集期]打包")
     
     # condition for series
-    series_reg = re.compile("第[0-9]{1,5}-[0-9]{1,5}集")
+    series_reg = re.compile("第[0-9]{1,5}-[0-9]{1,5}[集期]")
     
-    # condition for bilingual
-    bilingual_reg = re.compile(".? 双语.?")
+    # condition for bilingual, must contain 双语 or [英中... or 中英...]
+    #bilingual_reg = re.compile("(.?双语.?|.?^\[.?([简中繁]英|英[简中繁]).?$\].?)")
+    bilingual_reg = re.compile("(.?双语.*|\[.*([简中繁]英|英[简中繁]).*\])")
+    #bilingual_reg = re.compile("\[.+\]")
     
     small_descr_info['双语'] = bool(re.search(bilingual_reg, small_descr))
     
@@ -220,6 +242,22 @@ def salary_calc(uploader_dict):
     # initialize total salary
     total_salary = 0
     for torrent in uploader_dict['uploads']:
+        
+        # if it's NF
+        if uploader_dict['uploads'][torrent]['NF']:
+            
+            series_num = 1
+                
+            # number of series, new package ALSO count
+            if uploader_dict['uploads'][torrent]['旧合集']:
+                series_num = uploader_dict['uploads'][torrent]['旧合集']
+            elif uploader_dict['uploads'][torrent]['多集']:
+                series_num = uploader_dict['uploads'][torrent]['多集']
+            elif uploader_dict['uploads'][torrent]['新合集']:
+                series_num = uploader_dict['uploads'][torrent]['新合集']
+                    
+            uploader_dict['uploads'][torrent]['单种工资'] = 2000 * series_num
+            continue
 
         # no salary for new packages or other groups
         if (not uploader_dict['uploads'][torrent]['新合集']) and \
@@ -302,6 +340,7 @@ def write_salary_report(uploader_dict, now):
     with open(filename, 'a', newline = '', encoding = 'utf-8') as f:
         fieldnames = ['用户id', '用户名', '种子id', '标题','小标题','体积', \
                           '发布组', '分类', '分辨率', '多集','新合集','旧合集', \
+                          '双语', 'NF', \
                           '发布时间', '单种工资', '备注', '总魔力', '更新时间']
         thewriter = csv.DictWriter(f, fieldnames = fieldnames)
         
@@ -329,6 +368,16 @@ def write_salary_report(uploader_dict, now):
                 cate = cate_lib[uploader_dict['uploads'][torrent]['分类']]
             else:
                 cate = '什么鬼？'
+                
+            if uploader_dict['uploads'][torrent]['双语']:
+                bilingual = '是'
+            else:
+                bilingual = ''
+                
+            if uploader_dict['uploads'][torrent]['NF']:
+                NF = '是'
+            else:
+                NF = ''
             
             
             
@@ -343,6 +392,7 @@ def write_salary_report(uploader_dict, now):
                           '多集':uploader_dict['uploads'][torrent]['多集'], \
                           '新合集':uploader_dict['uploads'][torrent]['新合集'], \
                           '旧合集':uploader_dict['uploads'][torrent]['旧合集'], \
+                          '双语': bilingual, 'NF': NF, \
                           '发布时间':uploader_dict['uploads'][torrent]['发布时间'], \
                           '单种工资':uploader_dict['uploads'][torrent]['单种工资'], \
                           '备注':uploader_dict['uploads'][torrent]['备注'], \
@@ -428,6 +478,6 @@ def csv_to_excel(filename):
     
     read_file.to_excel (excel_file_path, index = None, header=True)
     
-start_button = Button(root, text="Start",fg = 'red', command = uploader_api)
-start_button.grid(row = 2)        
-root.mainloop() 
+#start_button = Button(root, text="Start",fg = 'red', command = uploader_api)
+#start_button.grid(row = 2)        
+#root.mainloop() 

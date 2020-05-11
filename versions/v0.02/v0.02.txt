@@ -1,0 +1,3 @@
+give up GUI,
+added regex reg for bilingual subs,
+added regex reg for NF
